@@ -30,7 +30,7 @@ export const createListOfTablesTool = (db: SqlDatabase) => {
   const listOfTablesTool = new DynamicStructuredTool({
     name: "sql_db_list_tables",
     description:
-      "nput is an empty string, output is a comma-separated list of tables in the database.",
+      "Input is an empty string, output is a comma-separated list of tables in the database.",
     func: async () => {
       const tableNames = db.allTables.map((table) => table.tableName);
       return tableNames.join(", ");
@@ -57,31 +57,14 @@ export const createTableSchemaTool = (db: SqlDatabase) => {
   return tableSchemaTool;
 };
 
-export const createQueryTool = (db: SqlDatabase) => {
-  const queryTool = new DynamicStructuredTool({
-    name: "sql_db_query",
+export const createQueryCheckerTool = (db: SqlDatabase) => {
+  const queryCheckerTool = new DynamicStructuredTool({
+    name: "sql_query_checker",
     description: `Input to this tool is a detailed and correct SQL query, output is a 
     result from the database. If the query is not correct, an error message
     will be returned. If an error is returned, rewrite the query, check the query, 
     and try again. If you encounter an issue with Unknown column
     'xxxx' in 'field list', use 'sql_db_schema' to query the correct table fields.`,
-    func: async ({ query }: { query: string }) => {
-      try {
-        return await db.run(query);
-      } catch (error: unknown) {
-        return `Error: ${(error as Error).message}`;
-      }
-    },
-    schema: _writeQuerySchema,
-  });
-  return queryTool;
-};
-
-export const createQueryCheckerTool = (db: SqlDatabase) => {
-  const queryCheckerTool = new DynamicStructuredTool({
-    name: "query_checker",
-    description:
-      "Validates SQL queries before execution. Always use before 'sql_db_query'. This tool writes the sql query to the database based on the user's question and schema.",
     func: async ({ query }: { query: string }) => {
       let parsedQuery = "";
       if (query.includes("```sql")) {
@@ -93,6 +76,23 @@ export const createQueryCheckerTool = (db: SqlDatabase) => {
       } else {
         parsedQuery = query;
       }
+      try {
+        return await db.run(parsedQuery);
+      } catch (error: unknown) {
+        return `Error: ${(error as Error).message}`;
+      }
+    },
+    schema: _writeQuerySchema,
+  });
+  return queryCheckerTool;
+};
+
+export const createQueryWriterTool = (db: SqlDatabase) => {
+  const queryWriterTool = new DynamicStructuredTool({
+    name: "sql_query_writer",
+    description:
+      "This tool write sql query that will be executed by 'sql_db_query' tool. Always use after 'sql_db_query' this tool. Always use 'qeury_checker' toll to write sql query",
+    func: async ({ query }: { query: string }) => {
       const llm = new ChatOpenAI({
         model: "gpt-4o",
         temperature: 0,
@@ -107,12 +107,12 @@ export const createQueryCheckerTool = (db: SqlDatabase) => {
         llm,
       });
       const result = await chain.invoke({
-        query: parsedQuery,
+        query,
         dialect: "postgresql",
       });
       return result.text;
     },
     schema: _checkQuerySchema,
   });
-  return queryCheckerTool;
+  return queryWriterTool;
 };

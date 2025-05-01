@@ -22,7 +22,7 @@ import { AgentExecutor } from "langchain/agents";
 import {
   createListOfTablesTool,
   createQueryCheckerTool,
-  createQueryTool,
+  createQueryWriterTool,
   createTableSchemaTool,
 } from "./tools2";
 
@@ -38,13 +38,13 @@ async function create_sql_agent(
 ) {
   const listOfTablesTool = createListOfTablesTool(db);
   const tableSchemaTool = createTableSchemaTool(db);
-  const queryTool = createQueryTool(db);
   const queryCheckerTool = createQueryCheckerTool(db);
+  const queryWriterTool = createQueryWriterTool(db);
   const tools = [
     listOfTablesTool,
     tableSchemaTool,
-    queryTool,
     queryCheckerTool,
+    queryWriterTool,
   ];
 
   const messages = [

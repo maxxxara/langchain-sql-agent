@@ -16,7 +16,17 @@ const SYSTEM_MESSAGE = ({
   
   DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
   
-  If the question does not seem related to the database, just return "I don't know" as the answer.`;
+  If the question does not seem related to the database, just return "I don't know" as the answer.
+  
+  Steps:
+  1. Call function 'sql_db_list_tables' to Get the list of tables in the database and return them as a comma-separated list. Return only tables names, that you think are relevant to the question.
+  2. Call function 'sql_db_schema' with the list of tables to get the schema of the tables.
+  3. Call function 'sql_query_writer' to write a query to answer the question.
+  4. Call function 'sql_query_checker' to check the query.
+  5. If the query is correct, call function 'sql_db_query' to execute the query.
+  6. Return the result of the query.
+
+  `;
 
 const SQL_SUFFIX = `Begin!
 
@@ -25,7 +35,7 @@ Thought: I need to answer the user's question about the database. I'll use the t
 {agent_scratchpad}
 `;
 
-const SQL_FUNCTIONS_SUFFIX = `I'll solve this step-by-step by exploring the database schema and executing SQL queries as needed.`;
+const SQL_FUNCTIONS_SUFFIX = `I'll solve this step-by-step by exploring the database schema and executing SQL queries as needed, with help of tools.`;
 
 const QUERY_CHECKER = `
 {query}
