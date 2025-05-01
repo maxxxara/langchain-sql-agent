@@ -1,12 +1,6 @@
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { SqlDatabase } from "langchain/sql_db";
 import {
-  QuerySQLDatabaseTool,
-  InfoSQLDatabaseTool,
-  ListSQLDatabaseTool,
-  QuerySQLCheckerTool,
-} from "./tools";
-import {
   SYSTEM_MESSAGE,
   SQL_SUFFIX,
   SQL_FUNCTIONS_SUFFIX,
@@ -25,6 +19,12 @@ import {
 } from "langchain/agents";
 import { ChatOpenAI } from "@langchain/openai";
 import { AgentExecutor } from "langchain/agents";
+import {
+  createListOfTablesTool,
+  createQueryCheckerTool,
+  createQueryTool,
+  createTableSchemaTool,
+} from "./tools2";
 
 // Define TOP_K constant
 const TOP_K = 5;
@@ -36,28 +36,25 @@ async function create_sql_agent(
   db: SqlDatabase,
   verbose: boolean = false
 ) {
+  const listOfTablesTool = createListOfTablesTool(db);
+  const tableSchemaTool = createTableSchemaTool(db);
+  const queryTool = createQueryTool(db);
+  const queryCheckerTool = createQueryCheckerTool(db);
   const tools = [
-    new QuerySQLDatabaseTool(db),
-    new InfoSQLDatabaseTool(db),
-    new ListSQLDatabaseTool(db),
-    new QuerySQLCheckerTool(db, llm),
+    listOfTablesTool,
+    tableSchemaTool,
+    queryTool,
+    queryCheckerTool,
   ];
-
-  const system_message_prompt = await PromptTemplate.fromTemplate(
-    SYSTEM_MESSAGE
-  ).format({
-    dialect: "postgresql",
-    top_k: TOP_K,
-  });
 
   const messages = [
-    new SystemMessage(system_message_prompt),
+    new SystemMessage(SYSTEM_MESSAGE({ top_k: TOP_K, dialect: "postgresql" })),
     new HumanMessage("{input}"),
-    new AIMessage(SQL_FUNCTIONS_SUFFIX),
+    new SystemMessage(SQL_FUNCTIONS_SUFFIX),
     new MessagesPlaceholder("agent_scratchpad"),
   ];
+  console.log("messages", messages);
   const prompt = ChatPromptTemplate.fromMessages(messages);
-
   const agent = await createOpenAIToolsAgent({
     llm: llm as ChatOpenAI,
     tools,
